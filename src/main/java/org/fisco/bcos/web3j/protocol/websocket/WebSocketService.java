@@ -3,8 +3,6 @@ package org.fisco.bcos.web3j.protocol.websocket;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.reactivex.BackpressureStrategy;
-import io.reactivex.Flowable;
 import io.reactivex.subjects.BehaviorSubject;
 import java.io.IOException;
 import java.net.ConnectException;
@@ -330,24 +328,6 @@ public class WebSocketService implements Web3jService {
         } catch (URISyntaxException e) {
             throw new RuntimeException(String.format("Failed to parse URL: '%s'", serverUrl), e);
         }
-    }
-
-    @Override
-    public <T extends Notification<?>> Flowable<T> subscribe(
-            Request request, String unsubscribeMethod, Class<T> responseType) {
-        // We can't use usual Observer since we can call "onError"
-        // before first client is subscribed and we need to
-        // preserve it
-        BehaviorSubject<T> subject = BehaviorSubject.create();
-
-        // We need to subscribe synchronously, since if we return
-        // an Flowable to a client before we got a reply
-        // a client can unsubscribe before we know a subscription
-        // id and this can cause a race condition
-        subscribeToEventsStream(request, subject, responseType);
-
-        return subject.doOnDispose(() -> closeSubscription(subject, unsubscribeMethod))
-                .toFlowable(BackpressureStrategy.BUFFER);
     }
 
     private <T extends Notification<?>> void subscribeToEventsStream(
